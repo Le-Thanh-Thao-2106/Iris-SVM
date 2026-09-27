@@ -283,8 +283,8 @@ function trainMultiClassSVM(X_train, y_train, C, kernel, gamma, degree = 3, coef
 // =====================================================================
 // 3. USER AUTHENTICATION & SUPABASE SESSION
 // =====================================================================
-const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://zivdfypkmalrlgojdlmy.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdmRmeXBrbWFscmxnb2pkbG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDkzNzksImV4cCI6MjEwNTgyNTM3OX0.0we8qj9_F9kQNy3t53ogL77iVe2QAHh3KCVky_cHAf8';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabaseClient;
@@ -1716,16 +1716,33 @@ window.deleteBenchmarkItem = async function(id) {
 };
 
 window.clearAllBenchmarks = async function() {
-  if (confirm('Bạn có chắc muốn xóa toàn bộ benchmark của bạn?')) {
-    userTimeline = [];
-    localStorage.removeItem(`iris_user_${currentUser.id}_timeline`);
-    if (supabaseClient && currentUser.id && currentUser.id !== 'guest_user') {
-      try {
-        await supabaseClient.from('experiment_history').delete().eq('user_id', currentUser.id);
-      } catch (e) {}
+  if (!confirm('Bạn có chắc muốn xóa toàn bộ benchmark của bạn?')) return;
+
+  userTimeline = [];
+  localStorage.removeItem(`iris_user_${currentUser.id}_timeline`);
+
+  if (supabaseClient && currentUser.id && currentUser.id !== 'guest_user') {
+    try {
+      const { error } = await supabaseClient
+        .from('experiment_history')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      if (error) {
+        console.error('Lỗi xóa toàn bộ Benchmark:', error);
+        alert('Không thể xóa toàn bộ Benchmark: ' + error.message);
+        return;
+      }
+
+      console.log('Đã xóa toàn bộ Benchmark của tài khoản:', currentUser.id);
+    } catch (e) {
+      console.error('Lỗi Supabase:', e);
+      alert('Có lỗi xảy ra khi xóa Benchmark.');
+      return;
     }
-    renderBenchmarkTable();
   }
+
+  renderBenchmarkTable();
 };
 
 // =====================================================================

@@ -290,13 +290,16 @@ function trainMultiClassSVM(X_train, y_train, C, kernel, gamma, degree = 3, coef
 // =====================================================================
 // 3. USER AUTHENTICATION & SUPABASE SESSION
 // =====================================================================
-const savedSupabaseUrl = localStorage.getItem('supabase_url');
-const savedSupabaseKey = localStorage.getItem('supabase_anon_key');
+let savedSupabaseUrl = localStorage.getItem('supabase_url');
+let savedSupabaseKey = localStorage.getItem('supabase_anon_key');
 
-const SUPABASE_URL = savedSupabaseUrl || import.meta.env?.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = savedSupabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+const fallbackSupabaseUrl = 'https://fnpjbrhhuhajgekrofzj.supabase.co';
+const fallbackSupabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZucGpicmhodWhhamdla3JvZnpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyMjQ0NDksImV4cCI6MjEwNTgwMDQ0OX0.K6aE0Eol_k6jRi4HUKWshZfRmLjrvbWnm9lZMa60Bzg';
 
-export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && !localStorage.getItem('iris_supabase_disabled'))
+const SUPABASE_URL = savedSupabaseUrl || import.meta.env?.VITE_SUPABASE_URL || fallbackSupabaseUrl;
+const SUPABASE_ANON_KEY = savedSupabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || fallbackSupabaseKey;
+
+export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 window.supabase = supabaseClient;

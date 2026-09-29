@@ -451,7 +451,7 @@ async function loadUserData() {
           f1: e.f1_score !== null && e.f1_score !== undefined ? e.f1_score.toString() : '0.967',
           svCount: e.support_vector_count || 0,
           execTime: e.execution_time_ms || 1.0,
-          timestamp: new Date(e.created_at).toLocaleString('vi-VN')
+          timestamp: new Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
         }));
         localStorage.setItem('iris_system_experiments', JSON.stringify(allSystemExperiments));
 
@@ -480,7 +480,7 @@ async function loadUserData() {
         if (!predErr && predData) {
           userHistory = predData.map(p => ({
             id: p.id,
-            timestamp: new Date(p.created_at).toLocaleString('vi-VN'),
+            timestamp: Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
             sl: p.sepal_length,
             sw: p.sepal_width,
             pl: p.petal_length,
@@ -896,7 +896,7 @@ function trainAndRenderBoundary(shouldSaveHistory = false) {
       f1,
       svCount: multiSVM.svIndices.length,
       execTime,
-      timestamp: new Date().toLocaleTimeString('vi-VN')
+      timestamp: new timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
     });
   }
 
@@ -1751,7 +1751,7 @@ window.clearAllBenchmarks = async function() {
 async function saveUserPrediction(sl, sw, pl, pw, prediction, method) {
   const item = {
     id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-    timestamp: new Date().toLocaleString('vi-VN'),
+    timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
     sl, sw, pl, pw,
     prediction,
     method: method || 'Nhập số liệu'
@@ -2905,7 +2905,7 @@ async function renderAdminStats() {
     let mHtml = '';
     const usersToRender = registeredUsers.length > 0 ? registeredUsers : [currentUser];
     usersToRender.forEach(u => {
-      const uCreatedAt = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : (u.createdAt || 'Hôm nay');
+      const uCreatedAt = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (u.createdAt || 'Hôm nay');
       html += `
         <tr>
           <td class="py-2.5 px-4 font-bold text-white">${u.name || u.email || 'User'}</td>
@@ -3134,8 +3134,8 @@ window.handleGateAuthSubmit = async function(e) {
               id: dbUser.id,
               email: dbUser.email,
               name: dbUser.name || name,
-              role: dbUser.role || ((email === 'admin@gmail.com' || email === 'huylechill@gmail.com') ? 'ADMIN' : 'USER'),
-              createdAt: new Date(dbUser.created_at || Date.now()).toLocaleDateString('vi-VN')
+              role: dbUser.role || ((email === 'admin@gmail.com' || email === 'lethao8130@gmail.com') ? 'ADMIN' : 'USER'),
+              createdAt: new new Date(dbUser.created_at || Date.now()).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
             };
           }
         } catch (dbErr) {

@@ -42,6 +42,13 @@ const IRIS_DATASET = [
   [6.7,3.0,5.2,2.3,2],[6.3,2.5,5.0,1.9,2],[6.5,3.0,5.2,2.0,2],[6.2,3.4,5.4,2.3,2],[5.9,3.0,5.1,1.8,2]
 ];
 
+function getVietnamISOString() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const vnTime = new Date(utc + (3600000 * 7)); // UTC + 7
+  return vnTime.toISOString().replace('Z', '+07:00');
+}
+
 const SPECIES_NAMES = ['setosa', 'versicolor', 'virginica'];
 const FEATURE_NAMES = ['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width'];
 
@@ -283,8 +290,11 @@ function trainMultiClassSVM(X_train, y_train, C, kernel, gamma, degree = 3, coef
 // =====================================================================
 // 3. USER AUTHENTICATION & SUPABASE SESSION
 // =====================================================================
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const savedSupabaseUrl = localStorage.getItem('supabase_url');
+const savedSupabaseKey = localStorage.getItem('supabase_anon_key');
+
+const SUPABASE_URL = savedSupabaseUrl || import.meta.env?.VITE_SUPABASE_URL || 'https://zivdfypkmalrlgojdlmy.supabase.co';
+const SUPABASE_ANON_KEY = savedSupabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdmRmeXBrbWFscmxnb2pkbG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDkzNzksImV4cCI6MjEwNTgyNTM3OX0.0we8qj9_F9kQNy3t53ogL77iVe2QAHh3KCVky_cHAf8';
 
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabaseClient;
@@ -451,7 +461,7 @@ async function loadUserData() {
           f1: e.f1_score !== null && e.f1_score !== undefined ? e.f1_score.toString() : '0.967',
           svCount: e.support_vector_count || 0,
           execTime: e.execution_time_ms || 1.0,
-          timestamp: new Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+          timestamp: new Date(e.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
         }));
         localStorage.setItem('iris_system_experiments', JSON.stringify(allSystemExperiments));
 
@@ -480,7 +490,7 @@ async function loadUserData() {
         if (!predErr && predData) {
           userHistory = predData.map(p => ({
             id: p.id,
-            timestamp: Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+            timestamp: new Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
             sl: p.sepal_length,
             sw: p.sepal_width,
             pl: p.petal_length,
@@ -666,7 +676,7 @@ window.predict = async function(forcedSpecies = null) {
 
   const flowerFormatted = 'Iris ' + prediction.charAt(0).toUpperCase() + prediction.slice(1);
   document.getElementById('flowerName').innerText = flowerFormatted;
-  document.getElementById('flowerImage').src = `./images/${prediction}.jpg`;
+  document.getElementById('flowerImage').src = `/images/${prediction}.jpg`;
 
   updateLiveSelectionPoint();
 
@@ -896,7 +906,7 @@ function trainAndRenderBoundary(shouldSaveHistory = false) {
       f1,
       svCount: multiSVM.svIndices.length,
       execTime,
-      timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+      timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
     });
   }
 
@@ -1478,6 +1488,7 @@ async function addTimelineItem(item) {
   if (supabaseClient && currentUser.id && currentUser.id !== 'guest_user') {
     try {
       const payload = {
+        id: item.id,
         user_id: currentUser.id,
         name: `SVM - ${(item.kernel || 'linear').toUpperCase()}`,
         kernel: (item.kernel || 'linear').toLowerCase(),
@@ -1493,7 +1504,7 @@ async function addTimelineItem(item) {
         f1_score: parseFloat(item.f1) || 0.967,
         support_vector_count: item.svCount || 0,
         execution_time_ms: parseFloat(item.execTime) || 1.0,
-        created_at: new Date().toISOString()
+        created_at: getVietnamISOString()
       };
       await supabaseClient.from('experiment_history').insert(payload);
     } catch (err) {
@@ -1716,33 +1727,16 @@ window.deleteBenchmarkItem = async function(id) {
 };
 
 window.clearAllBenchmarks = async function() {
-  if (!confirm('Bạn có chắc muốn xóa toàn bộ benchmark của bạn?')) return;
-
-  userTimeline = [];
-  localStorage.removeItem(`iris_user_${currentUser.id}_timeline`);
-
-  if (supabaseClient && currentUser.id && currentUser.id !== 'guest_user') {
-    try {
-      const { error } = await supabaseClient
-        .from('experiment_history')
-        .delete()
-        .eq('user_id', currentUser.id);
-
-      if (error) {
-        console.error('Lỗi xóa toàn bộ Benchmark:', error);
-        alert('Không thể xóa toàn bộ Benchmark: ' + error.message);
-        return;
-      }
-
-      console.log('Đã xóa toàn bộ Benchmark của tài khoản:', currentUser.id);
-    } catch (e) {
-      console.error('Lỗi Supabase:', e);
-      alert('Có lỗi xảy ra khi xóa Benchmark.');
-      return;
+  if (confirm('Bạn có chắc muốn xóa toàn bộ benchmark của bạn?')) {
+    userTimeline = [];
+    localStorage.removeItem(`iris_user_${currentUser.id}_timeline`);
+    if (supabaseClient && currentUser.id && currentUser.id !== 'guest_user') {
+      try {
+        await supabaseClient.from('experiment_history').delete().eq('user_id', currentUser.id);
+      } catch (e) {}
     }
+    renderBenchmarkTable();
   }
-
-  renderBenchmarkTable();
 };
 
 // =====================================================================
@@ -1772,7 +1766,7 @@ async function saveUserPrediction(sl, sw, pl, pw, prediction, method) {
         prediction: prediction,
         confidence: 100.0,
         method: method || 'Nhập số liệu',
-        created_at: new Date().toISOString()
+        created_at: getVietnamISOString()
       };
       await supabaseClient.from('prediction_history').insert(payload);
     } catch (err) {}
@@ -2501,7 +2495,7 @@ function renderFileAnalysisUI() {
       <div class="space-y-3">
         <!-- SETOSA CARD -->
         <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center gap-4 flex-wrap sm:flex-nowrap">
-          <img src="/images/setosa.jpg" alt="Iris Setosa" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='./images/setosa.svg'" />
+          <img src="/images/setosa.jpg" alt="Iris Setosa" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='/images/setosa.svg'" />
           <div class="flex-1 min-w-[200px]">
             <div class="flex justify-between items-center text-xs font-bold text-white mb-1">
               <span>Iris Setosa</span>
@@ -2515,7 +2509,7 @@ function renderFileAnalysisUI() {
 
         <!-- VERSICOLOR CARD -->
         <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center gap-4 flex-wrap sm:flex-nowrap">
-          <img src="/images/versicolor.jpg" alt="Iris Versicolor" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='./images/versicolor.svg'" />
+          <img src="/images/versicolor.jpg" alt="Iris Versicolor" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='/images/versicolor.svg'" />
           <div class="flex-1 min-w-[200px]">
             <div class="flex justify-between items-center text-xs font-bold text-white mb-1">
               <span>Iris Versicolor</span>
@@ -2529,7 +2523,7 @@ function renderFileAnalysisUI() {
 
         <!-- VIRGINICA CARD -->
         <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center gap-4 flex-wrap sm:flex-nowrap">
-          <img src="/images/virginica.jpg" alt="Iris Virginica" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='./images/virginica.svg'" />
+          <img src="/images/virginica.jpg" alt="Iris Virginica" class="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0 shadow-sm" onerror="this.src='/images/virginica.svg'" />
           <div class="flex-1 min-w-[200px]">
             <div class="flex justify-between items-center text-xs font-bold text-white mb-1">
               <span>Iris Virginica</span>
@@ -2746,7 +2740,7 @@ window.deleteAllAdminExperiments = async function() {
       const { error } = await supabaseClient
         .from('experiment_history')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .not('id', 'is', null);
       if (error) {
         console.warn('Lỗi Supabase khi xóa toàn bộ thí nghiệm:', error);
       }
@@ -3083,7 +3077,7 @@ window.handleGateAuthSubmit = async function(e) {
         email: email,
         password: password,
         role: role,
-        created_at: new Date().toISOString()
+        created_at: getVietnamISOString()
       };
 
       // Lưu vào Supabase app_users & profiles
@@ -3097,8 +3091,8 @@ window.handleGateAuthSubmit = async function(e) {
               full_name: name,
               password: password,
               role: role,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              created_at: getVietnamISOString(),
+              updated_at: getVietnamISOString()
             });
           } catch (pErr) {}
         } catch (insErr) {
@@ -3134,8 +3128,8 @@ window.handleGateAuthSubmit = async function(e) {
               id: dbUser.id,
               email: dbUser.email,
               name: dbUser.name || name,
-              role: dbUser.role || ((email === 'admin@gmail.com' || email === 'lethao8130@gmail.com') ? 'ADMIN' : 'USER'),
-              createdAt: new new Date(dbUser.created_at || Date.now()).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+              role: dbUser.role || ((email === 'admin@gmail.com' || email === 'huylechill@gmail.com') ? 'ADMIN' : 'USER'),
+              createdAt: new Date(dbUser.created_at || Date.now()).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
             };
           }
         } catch (dbErr) {
@@ -3151,7 +3145,7 @@ window.handleGateAuthSubmit = async function(e) {
             email: 'admin@gmail.com',
             name: 'Lê Thanh Thảo (Admin)',
             role: 'ADMIN',
-            createdAt: new Date().toLocaleDateString('vi-VN')
+            createdAt: new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
           };
         } else {
           // Fallback localStorage nếu mạng mất kết nối
@@ -3509,7 +3503,7 @@ const FLOWER_DETAILS = {
     badgeClass: 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40',
     title: 'Iris Setosa',
     sub: 'Diên vĩ mỏ nhọn · Bristle-pointed Iris',
-    img: './images/setosa.jpg',
+    img: '/images/setosa.jpg',
     desc: 'Loài hoa dại bản địa vùng Bắc Cực và cận Bắc Cực (Alaska, Siberia, Canada). Cây có kích thước nhỏ gọn, hoa màu tím xanh lam đậm với cánh hoa tiêu giảm độc đáo.',
     morphology: [
       '• <b>Cánh hoa (Petal):</b> Rất nhỏ, hẹp và ngắn (tiêu giảm chỉ còn dạng lông cứng dựng đứng).',
@@ -3527,7 +3521,7 @@ const FLOWER_DETAILS = {
     badgeClass: 'bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/40',
     title: 'Iris Versicolor',
     sub: 'Diên vĩ đa sắc · Harlequin Blueflag',
-    img: './images/versicolor.jpg',
+    img: '/images/versicolor.jpg',
     desc: 'Loài hoa diên vĩ đầm lầy phổ biến ở miền đông Bắc Mỹ. Tên gọi "versicolor" thể hiện qua các dải vân tím, trắng và vàng đan xen tinh tế.',
     morphology: [
       '• <b>Cánh hoa (Petal):</b> Kích thước trung bình cân đối, hình thìa, hướng xiên lên trên.',
@@ -3545,7 +3539,7 @@ const FLOWER_DETAILS = {
     badgeClass: 'bg-[#c084fc]/20 text-[#c084fc] border-[#c084fc]/40',
     title: 'Iris Virginica',
     sub: 'Diên vĩ Virginia · Southern Blue Flag',
-    img: './images/virginica.jpg',
+    img: '/images/virginica.jpg',
     desc: 'Loài diên vĩ lâu năm bản địa vùng đất ngập nước ven biển đông nam Hoa Kỳ. Cây có vóc dáng cao lớn nhất trong 3 loài với các đóa hoa nở to rực rỡ.',
     morphology: [
       '• <b>Cánh hoa (Petal):</b> To rộng và dài nhất, vươn cao với viền cánh lượn sóng mềm mại.',
@@ -3621,6 +3615,46 @@ function initChartResizeHandlers() {
 }
 
 // =====================================================================
+// SUPABASE CONFIGURATION MODAL HELPERS
+// =====================================================================
+window.openSupabaseConfigModal = function() {
+  const modal = document.getElementById('supabaseConfigModal');
+  const urlInput = document.getElementById('inputSupabaseUrl');
+  const keyInput = document.getElementById('inputSupabaseKey');
+  if (urlInput) urlInput.value = localStorage.getItem('supabase_url') || SUPABASE_URL;
+  if (keyInput) keyInput.value = localStorage.getItem('supabase_anon_key') || SUPABASE_ANON_KEY;
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+};
+
+window.closeSupabaseConfigModal = function() {
+  const modal = document.getElementById('supabaseConfigModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+};
+
+window.saveSupabaseConfig = function() {
+  const urlInput = document.getElementById('inputSupabaseUrl');
+  const keyInput = document.getElementById('inputSupabaseKey');
+  if (urlInput && keyInput) {
+    const url = urlInput.value.trim();
+    const key = keyInput.value.trim();
+    if (!url || !key) {
+      alert('Vui lòng nhập đầy đủ URL và Anon Key!');
+      return;
+    }
+    localStorage.setItem('supabase_url', url);
+    localStorage.setItem('supabase_anon_key', key);
+    alert('✅ Đã lưu cấu hình Supabase! Trang web sẽ tải lại để kết nối với cơ sở dữ liệu của bạn...');
+    window.location.reload();
+  }
+};
+
+// =====================================================================
 // 17. KHỞI TẠO DOM READY
 // =====================================================================
 window.addEventListener('DOMContentLoaded', () => {
@@ -3630,8 +3664,3 @@ window.addEventListener('DOMContentLoaded', () => {
   initChartResizeHandlers();
   checkApiHealth();
 });
-
-
-// Compatibility aliases for inline onclick handlers in index.html (module scope is not window scope).
-window.generateNewGuessSample = window.generateRandomSample;
-window.loadUserData = loadUserData;

@@ -293,10 +293,12 @@ function trainMultiClassSVM(X_train, y_train, C, kernel, gamma, degree = 3, coef
 const savedSupabaseUrl = localStorage.getItem('supabase_url');
 const savedSupabaseKey = localStorage.getItem('supabase_anon_key');
 
-const SUPABASE_URL = savedSupabaseUrl || import.meta.env?.VITE_SUPABASE_URL || 'https://zivdfypkmalrlgojdlmy.supabase.co';
-const SUPABASE_ANON_KEY = savedSupabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppdmRmeXBrbWFscmxnb2pkbG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDkzNzksImV4cCI6MjEwNTgyNTM3OX0.0we8qj9_F9kQNy3t53ogL77iVe2QAHh3KCVky_cHAf8';
+const SUPABASE_URL = savedSupabaseUrl || import.meta.env?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = savedSupabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && !localStorage.getItem('iris_supabase_disabled'))
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 window.supabase = supabaseClient;
 
 let currentUser = {

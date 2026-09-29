@@ -896,7 +896,7 @@ function trainAndRenderBoundary(shouldSaveHistory = false) {
       f1,
       svCount: multiSVM.svIndices.length,
       execTime,
-      timestamp: new timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
     });
   }
 

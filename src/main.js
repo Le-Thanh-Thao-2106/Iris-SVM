@@ -42,11 +42,54 @@ const IRIS_DATASET = [
   [6.7,3.0,5.2,2.3,2],[6.3,2.5,5.0,1.9,2],[6.5,3.0,5.2,2.0,2],[6.2,3.4,5.4,2.3,2],[5.9,3.0,5.1,1.8,2]
 ];
 
+// =====================================================================
+// CHUẨN MÚI GIỜ VIỆT NAM (HÀ NỘI / ASIA/HO_CHI_MINH - GMT+7)
+// =====================================================================
 function getVietnamISOString() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const vnTime = new Date(utc + (3600000 * 7)); // UTC + 7
-  return vnTime.toISOString().replace('Z', '+07:00');
+  const d = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const map = {};
+  parts.forEach(p => map[p.type] = p.value);
+  // Định dạng chuẩn ISO múi giờ Việt Nam +07:00 (Hà Nội / TP.HCM)
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}+07:00`;
+}
+
+function formatVietnamDateTime(dateVal) {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour12: false
+  });
+}
+
+function formatVietnamDate(dateVal) {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh'
+  });
+}
+
+function formatVietnamTime(dateVal) {
+  const d = dateVal ? new Date(dateVal) : new Date();
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour12: false
+  });
 }
 
 const SPECIES_NAMES = ['setosa', 'versicolor', 'virginica'];
@@ -466,7 +509,7 @@ async function loadUserData() {
           f1: e.f1_score !== null && e.f1_score !== undefined ? e.f1_score.toString() : '0.967',
           svCount: e.support_vector_count || 0,
           execTime: e.execution_time_ms || 1.0,
-          timestamp: new Date(e.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+          timestamp: formatVietnamDateTime(e.created_at)
         }));
         localStorage.setItem('iris_system_experiments', JSON.stringify(allSystemExperiments));
 
@@ -495,7 +538,7 @@ async function loadUserData() {
         if (!predErr && predData) {
           userHistory = predData.map(p => ({
             id: p.id,
-            timestamp: new Date(p.created_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+            timestamp: formatVietnamDateTime(p.created_at),
             sl: p.sepal_length,
             sw: p.sepal_width,
             pl: p.petal_length,
@@ -911,7 +954,7 @@ function trainAndRenderBoundary(shouldSaveHistory = false) {
       f1,
       svCount: multiSVM.svIndices.length,
       execTime,
-      timestamp: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      timestamp: formatVietnamTime()
     });
   }
 
@@ -1750,7 +1793,7 @@ window.clearAllBenchmarks = async function() {
 async function saveUserPrediction(sl, sw, pl, pw, prediction, method) {
   const item = {
     id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-    timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+    timestamp: formatVietnamDateTime(new Date()),
     sl, sw, pl, pw,
     prediction,
     method: method || 'Nhập số liệu'
@@ -2904,7 +2947,7 @@ async function renderAdminStats() {
     let mHtml = '';
     const usersToRender = registeredUsers.length > 0 ? registeredUsers : [currentUser];
     usersToRender.forEach(u => {
-      const uCreatedAt = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (u.createdAt || 'Hôm nay');
+      const uCreatedAt = u.created_at ? formatVietnamDate(u.created_at) : (u.createdAt || 'Hôm nay');
       html += `
         <tr>
           <td class="py-2.5 px-4 font-bold text-white">${u.name || u.email || 'User'}</td>
@@ -3134,7 +3177,7 @@ window.handleGateAuthSubmit = async function(e) {
               email: dbUser.email,
               name: dbUser.name || name,
               role: dbUser.role || ((email === 'admin@gmail.com' || email === 'huylechill@gmail.com') ? 'ADMIN' : 'USER'),
-              createdAt: new Date(dbUser.created_at || Date.now()).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+              createdAt: formatVietnamDate(dbUser.created_at || Date.now())
             };
           }
         } catch (dbErr) {
@@ -3150,7 +3193,7 @@ window.handleGateAuthSubmit = async function(e) {
             email: 'admin@gmail.com',
             name: 'Lê Thanh Thảo (Admin)',
             role: 'ADMIN',
-            createdAt: new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+            createdAt: formatVietnamDate(new Date())
           };
         } else {
           // Fallback localStorage nếu mạng mất kết nối
